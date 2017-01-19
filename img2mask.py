@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 from os import name
 
@@ -56,7 +57,7 @@ class SegmentationGUI(object):
                     "connect": "'i': insert, 't': toggle vertex, 'RIGHT': delete\n"
                            "Press 'Enter' to crop, 'm' to switch modes"}
  
-    _alpha = 0.30
+    _alpha = 0.3
     _ind = None #active vertex index
     _showverts = True
     _epsilon = 5
@@ -121,8 +122,8 @@ class SegmentationGUI(object):
                                  self.button_press_callback)
         self.canvas.mpl_connect('button_release_event', 
                                  self.button_release_callback)
-        self.canvas.mpl_connect('scroll_event', 
-                                 self.scroll_callback)
+        # self.canvas.mpl_connect('scroll_event', 
+        #                         self.scroll_callback)
         self.canvas.mpl_connect('motion_notify_event', 
                                  self.motion_notify_callback)
         self.canvas.mpl_connect('draw_event', 
@@ -331,7 +332,7 @@ class SegmentationGUI(object):
                     self._mask[y][x] = 1
                 else:
                     self._mask[y][x] = 0
-        #plt.close()
+        plt.close()
         self._showverts = False
 
 
@@ -400,7 +401,7 @@ def manual_segmentation(img, **kwargs):
 
 def main():
     test_img = np.zeros((256, 256))
-    result1 = manual_segmentation(test_img)
+    result1 = manual_segmentation(test_img, title="test figure")
     binmask1 = result1["mask"]
     verts1 = result1["verts"]
 
@@ -411,7 +412,7 @@ def main():
 
     fig, ax = plt.subplots()
     #load image onto the axis
-    ax.imshow(binmask, cmap='gray')
+    ax.imshow(binmask1, cmap='gray')
     ax.set_xlim([0., binmask1.shape[1]])
     ax.set_ylim([binmask1.shape[0], 0.])
     ax.autoscale = False
