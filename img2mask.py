@@ -8,15 +8,52 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.lines import Line2D
 from matplotlib.mlab import dist_point_to_segment
+from scipy.spatial import ConvexHull
 from copy import deepcopy
+
+
+def convex_hull(binary_mask):
+    """
+    Wrapper funcion for scipy.spatial.ConvexHull. From 2-dimensional
+    binary mask, return 1-dimensional list of hull vertices.
+
+    Parameters
+    ----------
+    binary_mask : A binary mask, numpy array of dimension 4.
+
+    Returns
+    -------
+    position : 1-dimensional list of hull vertices.
+    """
+    from scipy.spatial import ConvexHull
+
+    points = []
+
+    for x in range(binary_mask.shape[0]):
+        for y in range(binary_mask.shape[1]):
+            if binary_mask[x][y] > 0.:
+                points.append([y, x])
+
+    if len(points) < 3:
+        return points
+
+    hull = ConvexHull(points)
+
+
+    position = []
+    for idx in hull.vertices:
+        position.append(points[idx])
+
+    return position
+
 
 class SegmentationGUI(object):
 
     _modes = "plot"  #plot: place landmarks, connect: connect landmarks
 
-    _usage_title = {True: "LEFT: add landmark, RIGHT: delete landmark\n"
+    _usage_title = {"plot": "LEFT: add landmark, RIGHT: delete landmark\n"
                           "Press 'm' to switch modes",
-                    False: "'i': insert, 'RIGHT': delete\n"
+                    "connect": "'i': insert, 't': toggle vertex, 'RIGHT': delete\n"
                            "Press 'Enter' to crop, 'm' to switch modes"}
  
     _alpha = 0.30
@@ -40,7 +77,7 @@ class SegmentationGUI(object):
         self._img = img    
         self._mask = mask
         self._verts = verts
-        
+         
         """initializing GUI"""
         #define axis and corresponding figure img falls under
         self.fig, self.ax = plt.subplots()
@@ -53,6 +90,10 @@ class SegmentationGUI(object):
         self.ax.autoscale = False
         #preventing plot from clearing image
         self.ax.hold(True)
+       
+        """initialize title"""
+        self.ax.set_title(title)
+        self.ax.set_xlabel(self._usage_title["plot"])
         
         self.initialize_verts()
         self.initialize_plot()
@@ -62,8 +103,11 @@ class SegmentationGUI(object):
 
 
     def initialize_verts(self):
-        return 
-
+        #if verts given, overrides mask
+        if len(self._verts) > 0:
+            return 
+        self._verts[:] = convex_hull(self._mask)
+        
 
     def initialize_plot(self):
         self._plot = self.ax.plot([], [], marker='o', markerfacecolor='b', 
@@ -249,6 +293,7 @@ class SegmentationGUI(object):
     def switch2plot(self):
         self._modes = "plot"
         #self.ax.set_title(self.title[True])
+        self.ax.set_xlabel(self._usage_title["plot"]) 
         #self.ax.set_ylabel("")
 
         self.replot()
@@ -261,6 +306,7 @@ class SegmentationGUI(object):
                 raise AttributeError("Requires 2 or more vertices to draw region")
         self._modes = "connect"
         #self.ax.set_title(self.title[False])
+        self.ax.set_xlabel(self._usage_title["connect"]) 
         #self.ax.set_ylabel("Alpha: %.2f" % self.alpha)
 
         #self.verts_sort()
@@ -340,27 +386,34 @@ def manual_segmentation(img, **kwargs):
    
     mask = deepcopy(kwargs.pop("mask", np.zeros((ylen, xlen))))
     verts = deepcopy(kwargs.pop("verts", []))
-    title = deepcopy(kwargs.pop("title", None))
+    title = deepcopy(kwargs.pop("title", ""))
     
     gui = SegmentationGUI(img, mask, verts, title)
     plt.show()
 
     mask = gui.return_mask()
     verts = gui.return_verts()
-
-    return mask
+    output = {"mask": mask, "verts": verts}
+    
+    return output
 
 
 def main():
-
     test_img = np.zeros((256, 256))
-    binmask = manual_segmentation(test_img)
-    
+    result1 = manual_segmentation(test_img)
+    binmask1 = result1["mask"]
+    verts1 = result1["verts"]
+
+    #initializing with mask
+    result2 = manual_segmentation(test_img, mask=binmask1)
+    #initializing with verts
+    result3 = manual_segmentation(test_img, verts=verts1)
+
     fig, ax = plt.subplots()
     #load image onto the axis
     ax.imshow(binmask, cmap='gray')
-    ax.set_xlim([0., binmask.shape[1]])
-    ax.set_ylim([binmask.shape[0], 0.])
+    ax.set_xlim([0., binmask1.shape[1]])
+    ax.set_ylim([binmask1.shape[0], 0.])
     ax.autoscale = False
     #preventing plot from clearing image
     ax.hold(True)
